@@ -4,11 +4,9 @@
 
 int logging = false;
 
-//  Keep track of what we're doing so we can take the appropriate action
-enum DriveState {DRIVE, TURN} ;
-DriveState state = DRIVE;
-
-enum Strategy (SQUARE, GOTOGOAL};
+enum Strategy {SQUARE, GOTOGOAL};
+Strategy strategy = SQUARE;
+int strategyPhase = 0;  //  Each strategy to use this as appropriate
 
 //declare variables for the motor pins
  int lmotorPin1 = 17;    // Blue   - 28BYJ48 pin 1
@@ -49,18 +47,21 @@ int rightSpeed = 1;
 //  Wheel base = 12
 //  Converting to mm
 int rad = 38;
-int skaniaWidth = 120;
-int rotationDistance = 2 * rad * floor(M_PI);
+int skaniaWidth = 110;
+int rotationDistance = round(M_PI * 2 * rad);
 int distanceTravelled = 0; // in mm
 
 
-long metreMarker;
-long fullCircleCount; 
+long driveClicks;
+long turnClicks; 
 
 //  methods
 void moveStep();
 long clickCountForDistanceCm(float dist);
 long clickCountForRotationDegrees(float dist);
+void setStrategy(Strategy newStrat);
+void doSquare();
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -79,18 +80,7 @@ void setup() {
     
    Serial.begin(9600);
    
-   //  (7.5 * M_PI) is wheel perimeter
-   metreMarker = clickCountForDistanceCm(50.0f);
-   if (logging) {
-     Serial.print("metreMarker = ");
-     Serial.println(metreMarker);
-   }
-   fullCircleCount = clickCountForRotationDegrees(90.0f);
-    if (logging) {
-      Serial.print("fullCircleCount = ");
-      Serial.println(fullCircleCount);
-    }
-
+  setStrategy(SQUARE);
 }
 
 int left_i;
@@ -99,7 +89,38 @@ int right_i;
 ////////////////////////////////////////////////////
 void loop() {
 ////////////////////////////////////////////////////
-  if (DRIVE == state && clickCounter < metreMarker) {
+ if (strategy == SQUARE) {
+   doSquare();
+ }
+}
+ 
+////////////////////////////////////////////////////
+void setStrategy(Strategy newStrat) {
+////////////////////////////////////////////////////
+  if (SQUARE == newStrat) {
+     //  (7.5 * M_PI) is wheel perimeter
+   driveClicks = clickCountForDistanceCm(50.0f);
+   if (logging) {
+     Serial.print("driveClicks = ");
+     Serial.println(driveClicks);
+   }
+   turnClicks = clickCountForRotationDegrees(90.0f);
+    if (logging) {
+      Serial.print("turnClicks = ");
+      Serial.println(turnClicks);
+    }
+
+  }
+}
+ 
+////////////////////////////////////////////////////
+void doSquare() {
+////////////////////////////////////////////////////
+//  strategyPhases are 0, - 15
+//  all evens are drive
+//  < 8 are turn right
+//  > 8 are turn left
+  if ( strategyPhase % 2 == 0 && clickCounter < driveClicks) {
     moveStep();
    if (logging) {
      distanceTravelled = ((7.5 * M_PI * clickCounter) / (1.0 * countsperrev));
@@ -107,22 +128,34 @@ void loop() {
       Serial.println(distanceTravelled); 
      } 
   }
-  else   if (TURN == state && clickCounter < fullCircleCount ) {
+  else   if ( strategyPhase < 8 && clickCounter < turnClicks ) {
 
    //  Turn right
    rightSpeed = 0;
     moveStep();
     if (logging) {
       Serial.print("Turning = ");
-      Serial.println(clickCounter - metreMarker); 
+      Serial.println(clickCounter - driveClicks); 
+    }
+  }
+  else   if ( strategyPhase < 16 && clickCounter < turnClicks ) {
+
+   //  Turn left
+   leftSpeed = 0;
+    moveStep();
+    if (logging) {
+      Serial.print("Turning = ");
+      Serial.println(clickCounter - driveClicks); 
     }
   }
   else {
     //  reset
     clickCounter = 0;
    rightSpeed = 1;
-   state = (DRIVE == state) ? TURN : DRIVE;
+   leftSpeed = 1;
+   strategyPhase = (strategyPhase < 15) ? strategyPhase + 1 : 0;
   }
+  clickCounter++;
 }
  
 ////////////////////////////////////////////////////
@@ -159,14 +192,14 @@ void moveStep() {
 ////////////////////////////////////////////////////
 long clickCountForDistanceCm(float dist) {
 ////////////////////////////////////////////////////
-return floor((dist * countsperrev) / (7.5 * M_PI));
+return (long)((dist * countsperrev) / (7.5 * M_PI) * 2.0f);
 }
 
 ////////////////////////////////////////////////////
-long clickCountForRotationDegrees(int angle) {
+long clickCountForRotationDegrees(float angle) {
 ////////////////////////////////////////////////////
   float skaniaRatio = (1.0f * skaniaWidth) / (1.0f * rad);
-  float angleFloat = (1.0 * angle) / 360.0f;
-return floor(skaniaRatio * (1.0f * countsperrev) * angleFloat);
+  float angleFraction = angle / 360.0f;
+return (long)(skaniaRatio * (2.0f * countsperrev) * angleFraction);
 }
 
