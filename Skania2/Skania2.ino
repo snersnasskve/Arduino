@@ -2,10 +2,21 @@
 
 //  Logging and delaying takes way to long, so we'll do one or tother
 
-int logging = false;
+int logging = true;
 
-enum Strategy {SQUARE, GOTOGOAL};
-Strategy strategy = SQUARE;
+//  Using a centimetre scale
+struct Point {
+  int x;    
+  int y;    
+  Point(int inX, int inY) {
+    x = inX;
+    y = inY;
+  }
+};
+
+
+enum Strategy {NOSTRATEGY, SQUARE, GOTOGOAL};
+Strategy strategy = GOTOGOAL;
 int strategyPhase = 0;  //  Each strategy to use this as appropriate
 
 //declare variables for the motor pins
@@ -61,6 +72,7 @@ long clickCountForDistanceCm(float dist);
 long clickCountForRotationDegrees(float dist);
 void setStrategy(Strategy newStrat);
 void doSquare();
+Point getDestinationForGoal(int goalDistance, int goalAngle);
 
 
 void setup() {
@@ -91,23 +103,61 @@ void loop() {
 ////////////////////////////////////////////////////
  if (strategy == SQUARE) {
    doSquare();
+ } else  if (strategy == GOTOGOAL) {
+   doGoToGoal();
  }
 }
  
 ////////////////////////////////////////////////////
 void setStrategy(Strategy newStrat) {
 ////////////////////////////////////////////////////
+//  Reset various
+  clickCounter = 0;
+  leftPhase = 0;
+  rightPhase = 7;
+
   if (SQUARE == newStrat) {
      //  (7.5 * M_PI) is wheel perimeter
    driveClicks = clickCountForDistanceCm(50.0f);
    if (logging) {
-     Serial.print("driveClicks = ");
+     Serial.print("driveClicks(sq) = ");
      Serial.println(driveClicks);
    }
    turnClicks = clickCountForRotationDegrees(90.0f);
     if (logging) {
-      Serial.print("turnClicks = ");
+      Serial.print("turnClicks9sq) = ");
       Serial.println(turnClicks);
+    }
+
+  }
+  else   if (GOTOGOAL == newStrat) {
+    int goalDistance = 200;
+    int goalAngle    = 0;  //  Where positive is go_left, and negative is go_right
+
+   //  We're not going to use this yet. This is only useful if we're tracking which we aren't
+   // Point destination = getDestinationForGoal(goalDistance, goalAngle);
+   driveClicks = clickCountForDistanceCm(50.0f);
+   if (logging) {
+     Serial.print("driveClicks(gtg) = ");
+     Serial.println(driveClicks);
+   }
+   
+   float rotation = 45.0f;
+   turnClicks = clickCountForRotationDegrees(rotation);
+   if (rotation <= 180) {
+     //  Turn left
+     strategyPhase = 1;
+   } else {
+     //  Turn right
+     strategyPhase = 5;
+   }
+
+   
+    if (logging) {
+      Serial.print("turnClicks(gtg) = ");
+      Serial.println(turnClicks);
+      Serial.print("strategy = ");
+      Serial.println(strategy);
     }
 
   }
@@ -134,11 +184,56 @@ void doSquare() {
    rightSpeed = 0;
     moveStep();
     if (logging) {
-      Serial.print("Turning = ");
-      Serial.println(clickCounter - driveClicks); 
+      //Serial.print("Turning = ");
+      //Serial.println(clickCounter - driveClicks); 
     }
   }
   else   if ( strategyPhase < 16 && clickCounter < turnClicks ) {
+
+   //  Turn left
+   leftSpeed = 0;
+    moveStep();
+    if (logging) {
+      //Serial.print("Turning = ");
+      //Serial.println(clickCounter - driveClicks); 
+    }
+  }
+  else {
+    //  reset
+    clickCounter = 0;
+   rightSpeed = 1;
+   leftSpeed = 1;
+   strategyPhase = (strategyPhase < 15) ? strategyPhase + 1 : 0;
+  } 
+  clickCounter++;
+}
+
+ 
+////////////////////////////////////////////////////
+void doGoToGoal() {
+////////////////////////////////////////////////////
+//  Strategy phases are 1, 2 = turn left then go straight
+//                      5, 6 = turn right then go straight
+
+ if ( strategyPhase % 2 == 0 && clickCounter < driveClicks) {
+    moveStep();
+   if (logging) {
+     distanceTravelled = ((7.5 * M_PI * clickCounter) / (1.0 * countsperrev));
+     //Serial.print("Distance Travelled = ");
+      //Serial.println(distanceTravelled); 
+     } 
+  }
+  else   if ( strategyPhase == 5 && clickCounter < turnClicks ) {
+
+   //  Turn right
+   rightSpeed = 0;
+    moveStep();
+    if (logging) {
+      //Serial.print("Turning = ");
+      //Serial.println(clickCounter - driveClicks); 
+    }
+  }
+  else   if ( strategyPhase == 1 && clickCounter < turnClicks ) {
 
    //  Turn left
    leftSpeed = 0;
@@ -149,15 +244,15 @@ void doSquare() {
     }
   }
   else {
-    //  reset
-    clickCounter = 0;
-   rightSpeed = 1;
-   leftSpeed = 1;
-   strategyPhase = (strategyPhase < 15) ? strategyPhase + 1 : 0;
+    //  stop
+    strategy = NOSTRATEGY;
+  
   }
   clickCounter++;
 }
- 
+
+
+
 ////////////////////////////////////////////////////
 void moveStep() {
  ////////////////////////////////////////////////////
@@ -184,9 +279,9 @@ void moveStep() {
  }
   
  clickCounter++;
- if (!logging) {
+ //if (!logging) {
    delay(1);
-   }
+   //}
 }
 
 ////////////////////////////////////////////////////
@@ -203,3 +298,11 @@ long clickCountForRotationDegrees(float angle) {
 return (long)(skaniaRatio * (2.0f * countsperrev) * angleFraction);
 }
 
+////////////////////////////////////////////////////
+Point getDestinationForGoal(int goalDistance, int goalAngle) {
+////////////////////////////////////////////////////
+  float angleRadians = (M_PI * goalAngle) / 180.0f;
+  float x = round(sin(angleRadians) * goalDistance);
+  float y = round(cos(angleRadians) * goalDistance);
+  return Point(x, y);
+}
