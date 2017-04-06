@@ -16,7 +16,29 @@ struct Point {
 
 
 enum Strategy {NOSTRATEGY, SQUARE, GOTOGOAL};
-Strategy strategy = GOTOGOAL;
+
+/*
+struct State {
+  Strategy strategy;
+  long clickCounter;
+  int leftDirection;
+
+  int rightDirection;
+
+  int leftSpeed;
+  int rightSpeed;
+
+  State() {
+    strategy = NOSTRATEGY;
+    clickCounter = 0;
+    leftDirection = -1;
+    rightDirection = 1
+    leftSpeed = 1;
+    rightSpeed = 1;
+  }
+}
+*/
+Strategy strategy = SQUARE;
 int strategyPhase = 0;  //  Each strategy to use this as appropriate
 
 //declare variables for the motor pins
@@ -101,6 +123,7 @@ int right_i;
 ////////////////////////////////////////////////////
 void loop() {
 ////////////////////////////////////////////////////
+
  if (strategy == SQUARE) {
    doSquare();
  } else  if (strategy == GOTOGOAL) {
@@ -166,6 +189,7 @@ void setStrategy(Strategy newStrat) {
 ////////////////////////////////////////////////////
 void doSquare() {
 ////////////////////////////////////////////////////
+
 //  strategyPhases are 0, - 15
 //  all evens are drive
 //  < 8 are turn right
@@ -173,9 +197,9 @@ void doSquare() {
   if ( strategyPhase % 2 == 0 && clickCounter < driveClicks) {
     moveStep();
    if (logging) {
-     distanceTravelled = ((7.5 * M_PI * clickCounter) / (1.0 * countsperrev));
-     Serial.print("Distance Travelled = ");
-      Serial.println(distanceTravelled); 
+    // distanceTravelled = ((7.5 * M_PI * clickCounter) / (1.0 * countsperrev));
+    // Serial.print("Distance Travelled = ");
+    //  Serial.println(distanceTravelled); 
      } 
   }
   else   if ( strategyPhase < 8 && clickCounter < turnClicks ) {
@@ -204,6 +228,10 @@ void doSquare() {
    rightSpeed = 1;
    leftSpeed = 1;
    strategyPhase = (strategyPhase < 15) ? strategyPhase + 1 : 0;
+   if (logging) {
+      Serial.print("New phase = ");
+      Serial.println(strategyPhase); 
+    }
   } 
   clickCounter++;
 }
@@ -279,9 +307,8 @@ void moveStep() {
  }
   
  clickCounter++;
- //if (!logging) {
-   delay(1);
-   //}
+   delay(1 + ! leftSpeed + ! rightSpeed);
+
 }
 
 ////////////////////////////////////////////////////
