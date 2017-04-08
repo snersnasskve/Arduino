@@ -17,7 +17,7 @@ struct Point {
 
 enum Strategy {NOSTRATEGY, SQUARE, GOTOGOAL};
 
-/*
+
 struct State {
   Strategy strategy;
   long clickCounter;
@@ -32,12 +32,13 @@ struct State {
     strategy = NOSTRATEGY;
     clickCounter = 0;
     leftDirection = -1;
-    rightDirection = 1
+    rightDirection = 1;
     leftSpeed = 1;
     rightSpeed = 1;
   }
-}
-*/
+  
+};
+
 Strategy strategy = SQUARE;
 int strategyPhase = 0;  //  Each strategy to use this as appropriate
 
