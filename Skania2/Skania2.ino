@@ -20,6 +20,7 @@ enum Strategy {NOSTRATEGY, SQUARE, GOTOGOAL};
 
 struct State {
   Strategy strategy;
+  int strategyPhase;  //  Each strategy to use this as appropriate
   long clickCounter;
   int leftDirection;
 
@@ -30,6 +31,7 @@ struct State {
 
   State() {
     strategy = NOSTRATEGY;
+    strategyPhase = 0;  //  Each strategy to use this as appropriate
     clickCounter = 0;
     leftDirection = -1;
     rightDirection = 1;
@@ -39,8 +41,9 @@ struct State {
   
 };
 
-Strategy strategy = SQUARE;
-int strategyPhase = 0;  //  Each strategy to use this as appropriate
+State state;
+
+//Strategy strategy = SQUARE;
 
 //declare variables for the motor pins
  int lmotorPin1 = 17;    // Blue   - 28BYJ48 pin 1
@@ -60,22 +63,13 @@ int proximityTrig = 12;
 int proximityEcho = 13;
 Ultrasonic ultrasonic(proximityTrig,proximityEcho); // (Trig PIN,Echo PIN)
 
+//  Controls
 int motorSpeed = 1200;  //variable to set stepper speed
-int count = 0;          // count of steps made
 int countsperrev = 4096; // number of steps per full revolution
 int lookup[8] = {B01000, B01100, B00100, B00110, B00010, B00011, B00001, B01001};
 
-
-//  Controls
-long clickCounter = 0;
 int leftPhase = 0;    //  Start at the bottom
-int leftDirection = -1;
-
 int rightPhase = 7;    //  Start at the top
-int rightDirection = 1;
-
-int leftSpeed = 1;
-int rightSpeed = 1;
 
 //  Wheel diameter = 76
 //  Wheel base = 12
@@ -125,9 +119,9 @@ int right_i;
 void loop() {
 ////////////////////////////////////////////////////
 
- if (strategy == SQUARE) {
+ if (state.strategy == SQUARE) {
    doSquare();
- } else  if (strategy == GOTOGOAL) {
+ } else  if (state.strategy == GOTOGOAL) {
    doGoToGoal();
  }
 }
@@ -136,7 +130,9 @@ void loop() {
 void setStrategy(Strategy newStrat) {
 ////////////////////////////////////////////////////
 //  Reset various
-  clickCounter = 0;
+  state = State();
+  state.strategy = newStrat;
+  state.clickCounter = 0;
   leftPhase = 0;
   rightPhase = 7;
 
@@ -170,10 +166,10 @@ void setStrategy(Strategy newStrat) {
    turnClicks = clickCountForRotationDegrees(rotation);
    if (rotation <= 180) {
      //  Turn left
-     strategyPhase = 1;
+     state.strategyPhase = 1;
    } else {
      //  Turn right
-     strategyPhase = 5;
+     state.strategyPhase = 5;
    }
 
    
@@ -181,7 +177,7 @@ void setStrategy(Strategy newStrat) {
       Serial.print("turnClicks(gtg) = ");
       Serial.println(turnClicks);
       Serial.print("strategy = ");
-      Serial.println(strategy);
+      Serial.println(state.strategy);
     }
 
   }
@@ -195,7 +191,7 @@ void doSquare() {
 //  all evens are drive
 //  < 8 are turn right
 //  > 8 are turn left
-  if ( strategyPhase % 2 == 0 && clickCounter < driveClicks) {
+  if ( state.strategyPhase % 2 == 0 && state.clickCounter < driveClicks) {
     moveStep();
    if (logging) {
     // distanceTravelled = ((7.5 * M_PI * clickCounter) / (1.0 * countsperrev));
@@ -203,20 +199,20 @@ void doSquare() {
     //  Serial.println(distanceTravelled); 
      } 
   }
-  else   if ( strategyPhase < 8 && clickCounter < turnClicks ) {
+  else   if ( state.strategyPhase < 8 && state.clickCounter < turnClicks ) {
 
    //  Turn right
-   rightSpeed = 0;
+   state.rightSpeed = 0;
     moveStep();
     if (logging) {
       //Serial.print("Turning = ");
       //Serial.println(clickCounter - driveClicks); 
     }
   }
-  else   if ( strategyPhase < 16 && clickCounter < turnClicks ) {
+  else   if ( state.strategyPhase < 16 && state.clickCounter < turnClicks ) {
 
    //  Turn left
-   leftSpeed = 0;
+   state.leftSpeed = 0;
     moveStep();
     if (logging) {
       //Serial.print("Turning = ");
@@ -225,16 +221,16 @@ void doSquare() {
   }
   else {
     //  reset
-    clickCounter = 0;
-   rightSpeed = 1;
-   leftSpeed = 1;
-   strategyPhase = (strategyPhase < 15) ? strategyPhase + 1 : 0;
+   state.clickCounter = 0;
+   state.rightSpeed = 1;
+   state.leftSpeed = 1;
+   state.strategyPhase = (state.strategyPhase < 15) ? state.strategyPhase + 1 : 0;
    if (logging) {
       Serial.print("New phase = ");
-      Serial.println(strategyPhase); 
+      Serial.println(state.strategyPhase); 
     }
   } 
-  clickCounter++;
+  state.clickCounter++;
 }
 
  
@@ -244,40 +240,40 @@ void doGoToGoal() {
 //  Strategy phases are 1, 2 = turn left then go straight
 //                      5, 6 = turn right then go straight
 
- if ( strategyPhase % 2 == 0 && clickCounter < driveClicks) {
+ if ( state.strategyPhase % 2 == 0 && state.clickCounter < driveClicks) {
     moveStep();
    if (logging) {
-     distanceTravelled = ((7.5 * M_PI * clickCounter) / (1.0 * countsperrev));
+     distanceTravelled = ((7.5 * M_PI * state.clickCounter) / (1.0 * countsperrev));
      //Serial.print("Distance Travelled = ");
       //Serial.println(distanceTravelled); 
      } 
   }
-  else   if ( strategyPhase == 5 && clickCounter < turnClicks ) {
+  else   if ( state.strategyPhase == 5 && state.clickCounter < turnClicks ) {
 
    //  Turn right
-   rightSpeed = 0;
+   state.rightSpeed = 0;
     moveStep();
     if (logging) {
       //Serial.print("Turning = ");
       //Serial.println(clickCounter - driveClicks); 
     }
   }
-  else   if ( strategyPhase == 1 && clickCounter < turnClicks ) {
+  else   if ( state.strategyPhase == 1 && state.clickCounter < turnClicks ) {
 
    //  Turn left
-   leftSpeed = 0;
+   state.leftSpeed = 0;
     moveStep();
     if (logging) {
       Serial.print("Turning = ");
-      Serial.println(clickCounter - driveClicks); 
+      Serial.println(state.clickCounter - driveClicks); 
     }
   }
   else {
     //  stop
-    strategy = NOSTRATEGY;
+    state.strategy = NOSTRATEGY;
   
   }
-  clickCounter++;
+  state.clickCounter++;
 }
 
 
@@ -285,30 +281,30 @@ void doGoToGoal() {
 ////////////////////////////////////////////////////
 void moveStep() {
  ////////////////////////////////////////////////////
- if ((leftSpeed != 0) && (clickCounter % leftSpeed == 0)) {
+ if ((state.leftSpeed != 0) && (state.clickCounter % state.leftSpeed == 0)) {
    	   digitalWrite(lmotorPin1, bitRead(lookup[leftPhase], 0));
 	   digitalWrite(lmotorPin2, bitRead(lookup[leftPhase], 1));
 	   digitalWrite(lmotorPin3, bitRead(lookup[leftPhase], 2));
 	   digitalWrite(lmotorPin4, bitRead(lookup[leftPhase], 3));
-	leftPhase += leftDirection ;	// reset if it gets to 8
+	leftPhase += state.leftDirection ;	// reset if it gets to 8
         leftPhase = (leftPhase + 8) % 8;
  
    
  }
   
- if ((rightSpeed != 0) && (clickCounter % rightSpeed == 0)) {
+ if ((state.rightSpeed != 0) && (state.clickCounter % state.rightSpeed == 0)) {
    	   digitalWrite(rmotorPin1, bitRead(lookup[rightPhase], 0));
 	   digitalWrite(rmotorPin2, bitRead(lookup[rightPhase], 1));
 	   digitalWrite(rmotorPin3, bitRead(lookup[rightPhase], 2));
 	   digitalWrite(rmotorPin4, bitRead(lookup[rightPhase], 3));
-	rightPhase += rightDirection ;	// reset if it gets to 8
+	rightPhase += state.rightDirection ;	// reset if it gets to 8
         rightPhase = (rightPhase + 8) % 8;
   
    
  }
   
- clickCounter++;
-   delay(1 + ! leftSpeed + ! rightSpeed);
+ state.clickCounter++;
+   delay(1 + ! state.leftSpeed + ! state.rightSpeed);
 
 }
 
