@@ -2,7 +2,9 @@
 
 //  Logging and delaying takes way to long, so we'll do one or tother
 
-int logging = true;
+//  Investigate - turning = 0,
+//  Distance wiring is dodgy
+int logging = false;
 
 //  Using a centimetre scale
 struct Point {
@@ -14,29 +16,31 @@ struct Point {
   }
 };
 
+struct Pose {
+  Point point = Point(0, 0);    
+  int angle = 0;  // degrees   - angles increase positively in the anti-clockwise direction
+  Pose() {
+  }
+};
+
+
 
 enum Strategy {NOSTRATEGY, SQUARE, GOTOGOAL};
 
 
 struct State {
-  Strategy strategy;
-  int strategyPhase;  //  Each strategy to use this as appropriate
-  long clickCounter;
-  int leftDirection;
+  Strategy strategy = NOSTRATEGY;
+  int strategyPhase = 0;            //  Each strategy to use this as appropriate
+  Pose pose = Pose();          // Convention: x is the direction we are facing, so I suppose y is to our left;
+  long clickCounter = 0;
+  int leftDirection = -1;
 
-  int rightDirection;
+  int rightDirection = 1;
 
-  int leftSpeed;
-  int rightSpeed;
+  int leftSpeed = 1;
+  int rightSpeed = 1;
 
   State() {
-    strategy = NOSTRATEGY;
-    strategyPhase = 0;  //  Each strategy to use this as appropriate
-    clickCounter = 0;
-    leftDirection = -1;
-    rightDirection = 1;
-    leftSpeed = 1;
-    rightSpeed = 1;
   }
   
 };
@@ -59,9 +63,14 @@ State state;
                         // Red    - 28BYJ48 pin 5 (VCC)
                         
  //  Proximity sensor
-int proximityTrig = 12;
-int proximityEcho = 13;
+int proximityTrig = 11;
+int proximityEcho = 12;
 Ultrasonic ultrasonic(proximityTrig,proximityEcho); // (Trig PIN,Echo PIN)
+
+const int touchPin = 3;
+//  store the time when last touch event happened
+unsigned long lastTouchEvent = 0;
+
 
 //  Controls
 int motorSpeed = 1200;  //variable to set stepper speed
@@ -107,23 +116,45 @@ void setup() {
    pinMode(proximityTrig, OUTPUT);
    pinMode(proximityEcho, INPUT);
     
+   pinMode(touchPin, INPUT);
+   
    Serial.begin(9600);
    
-  setStrategy(SQUARE);
+  setStrategy(NOSTRATEGY);
 }
 
-int left_i;
-int right_i;
 
 ////////////////////////////////////////////////////
 void loop() {
 ////////////////////////////////////////////////////
 
+ if (state.clickCounter % 10 == 0) {
+      Serial.print("Distance = ");
+     int distance = ultrasonic.Ranging(CM);  
+     Serial.println(distance);     // the raw analog reading
+     if (distance < 40) {
+       //  Avoid
+       state.strategyPhase = 1;
+       turnClicks = clickCountForRotationDegrees(45.0f);
+     }
+ }
  if (state.strategy == SQUARE) {
    doSquare();
  } else  if (state.strategy == GOTOGOAL) {
    doGoToGoal();
  }
+ 
+  int touchState = digitalRead(touchPin);
+  if (touchState == HIGH) {
+  //if 50ml has passed since last HIGH pulse, it means that the
+    //  touch sensor has been touched, released and touched again }
+    if (millis() - lastTouchEvent > 50) {
+    setStrategy(static_cast<Strategy> ((state.strategy == GOTOGOAL) ? NOSTRATEGY : state.strategy + 1));
+    }
+    // remember when last even happened
+    lastTouchEvent = millis();
+  }
+   
 }
  
 ////////////////////////////////////////////////////
@@ -138,12 +169,12 @@ void setStrategy(Strategy newStrat) {
 
   if (SQUARE == newStrat) {
      //  (7.5 * M_PI) is wheel perimeter
-   driveClicks = clickCountForDistanceCm(50.0f);
+   driveClicks = clickCountForDistanceCm(100.0f);
    if (logging) {
      Serial.print("driveClicks(sq) = ");
      Serial.println(driveClicks);
    }
-   turnClicks = clickCountForRotationDegrees(90.0f);
+   turnClicks = clickCountForRotationDegrees(45.0f);
     if (logging) {
       Serial.print("turnClicks9sq) = ");
       Serial.println(turnClicks);
