@@ -127,11 +127,14 @@ void setup() {
 ////////////////////////////////////////////////////
 void loop() {
 ////////////////////////////////////////////////////
-
- if (state.clickCounter % 10 == 0) {
-      Serial.print("Distance = ");
+delay(1000);
+  Serial.print("Distance = ");
      int distance = ultrasonic.Ranging(CM);  
-     Serial.println(distance);     // the raw analog reading
+     Serial.println(distance);
+ if (state.clickCounter % 10 == 0) {
+    //  Serial.print("Distance = ");
+    // int distance = ultrasonic.Ranging(CM);  
+    // Serial.println(distance);     // the raw analog reading
      if (distance < 40) {
        //  Avoid
        state.strategyPhase = 1;
@@ -312,6 +315,9 @@ void doGoToGoal() {
 ////////////////////////////////////////////////////
 void moveStep() {
  ////////////////////////////////////////////////////
+ 
+ return;
+ 
  if ((state.leftSpeed != 0) && (state.clickCounter % state.leftSpeed == 0)) {
    	   digitalWrite(lmotorPin1, bitRead(lookup[leftPhase], 0));
 	   digitalWrite(lmotorPin2, bitRead(lookup[leftPhase], 1));
