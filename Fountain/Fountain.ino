@@ -52,8 +52,8 @@ void loop() {
 
   Serial.println("looping");
    //delay(3000);
-
-  
+  for (int i = 0 ; i < 50 ; i++) {
+  Serial.println(i);
   // put your main code here, to run repeatedly:
    Serial.print("Left = ");
      int brightnessLeft = analogRead(photocellLeft);  
@@ -80,9 +80,12 @@ void loop() {
           }
 
       }
-        
+  
   delay(500);
-  delayWDT(WDTO_1S);
+  }
+            Serial.println("Sleeping");    
+
+  delayWDT(WDTO_8S);
   
 }
 
@@ -94,9 +97,29 @@ void wakeUp() {
     //  detachInterrupt(0);
 }
 
+//  Power saving delay function
 void delayWDT(byte timer) {
+              Serial.println("delayWDT");    
+
   sleep_enable(); // enable the sleep capability
   set_sleep_mode(SLEEP_MODE_PWR_DOWN); //  set the type of sleep mode. Default is idle
+  //ADCSRA &= -(1<<ADEN);  //   Turn off ADC before going to sleep (set ADEN bit to 0)
+  WDTCSR |= 0b00011000;   //  Set the WDE bit and then clear it when set the prescaler, 
+                          //  WDCE bit  must be set if changing WDE b....
+  WDTCSR = 0b01000000 | timer;  //  Or timer prescaler byte with interrupt bit set
+  //  WDTCSR = 0b01000110; //  This sets the WDT to 1 second
+  wdt_reset();  //  Reset the WDT = start timer
+  sleep_cpu(); //  enter sleep mode. Next code that will be executed is the ISR when interrupt wakes Arduino from sleep
+  sleep_disable();  //  disable sleep mode
+ //ADCSRA &= (1<<ADEN);  // Turn the ADC back on
+ 
+}
+
+//  This is the interrupt service frutine for the WDT. It is called when the WDT times out
+//  This ISR must be in your Arduino skeptch or else the WDT will not work correctly
+ISR (WDT_vect) {
+ wdt_disable();
+ MCUSR = 0 ; // Clear WDT flag since it is disabled, this is optional
 }
 /*
 void sleepNow()
