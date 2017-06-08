@@ -27,6 +27,8 @@ int motorSpeed = 1200;  //variable to set stepper speed
  int motorPin2 = 5;    // Pink   - 28BYJ48 pin 2
  int motorPin3 = 6;   // Yellow - 28BYJ48 pin 3
  int motorPin4 = 7;   // Orange - 28BYJ48 pin 4
+ 
+ int motorPhase = 0;
 
 int lookup[8] = {B01000, B01100, B00100, B00110, B00010, B00011, B00001, B01001};
 
@@ -52,7 +54,7 @@ void loop() {
 
   Serial.println("looping");
    //delay(3000);
-  for (int i = 0 ; i < 50 ; i++) {
+  for (int i = 0 ; i < 10 ; i++) {
   Serial.println(i);
   // put your main code here, to run repeatedly:
    Serial.print("Left = ");
@@ -83,7 +85,7 @@ void loop() {
   
   delay(500);
   }
-            Serial.println("Sleeping");    
+      //      Serial.println("Sleeping");    
 
   delayWDT(WDTO_8S);
   
@@ -100,7 +102,6 @@ void wakeUp() {
 //  Power saving delay function
 void delayWDT(byte timer) {
               Serial.println("delayWDT");    
-
   sleep_enable(); // enable the sleep capability
   set_sleep_mode(SLEEP_MODE_PWR_DOWN); //  set the type of sleep mode. Default is idle
   //ADCSRA &= -(1<<ADEN);  //   Turn off ADC before going to sleep (set ADEN bit to 0)
@@ -140,17 +141,16 @@ void sleepNow()
 
 void moveStep(int dir)
 {
-   for(int motorPhase = 0; motorPhase < 8; motorPhase++)
-   {
      if (dir == 1) {
  
         setOutputDir(motorPhase);
-     } else
+     } else {
     
         setOutputDir(7-motorPhase);
-      
-    }
+     }
      delayMicroseconds(motorSpeed);
+   
+   motorPhase = (motorPhase < 7) ? ++motorPhase : 0;
 }
 
 

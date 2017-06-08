@@ -148,10 +148,13 @@ delay(1000);
  }
  
   int touchState = digitalRead(touchPin);
-  if (touchState == HIGH) {
+  if (touchState != HIGH) {
+    Serial.println("touched");
   //if 50ml has passed since last HIGH pulse, it means that the
     //  touch sensor has been touched, released and touched again }
     if (millis() - lastTouchEvent > 50) {
+          Serial.println("changing mode");
+
     setStrategy(static_cast<Strategy> ((state.strategy == GOTOGOAL) ? NOSTRATEGY : state.strategy + 1));
     }
     // remember when last even happened
