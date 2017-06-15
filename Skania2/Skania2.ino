@@ -4,7 +4,7 @@
 
 //  Investigate - turning = 0,
 //  Distance wiring is dodgy
-int logging = false;
+bool logging = false;
 
 //  Using a centimetre scale
 struct Point {
@@ -24,8 +24,8 @@ struct Pose {
 };
 
 
-
-enum Strategy {NOSTRATEGY, SQUARE, GOTOGOAL};
+//  
+enum Strategy {NOSTRATEGY, SQUARE, GOTOGOAL, WANDER, LASTSTRAT};
 
 
 struct State {
@@ -97,7 +97,8 @@ void moveStep();
 long clickCountForDistanceCm(float dist);
 long clickCountForRotationDegrees(float dist);
 void setStrategy(Strategy newStrat);
-void doSquare();
+
+
 Point getDestinationForGoal(int goalDistance, int goalAngle);
 
 
@@ -127,14 +128,12 @@ void setup() {
 ////////////////////////////////////////////////////
 void loop() {
 ////////////////////////////////////////////////////
-delay(1000);
-  Serial.print("Distance = ");
-     int distance = ultrasonic.Ranging(CM);  
-     Serial.println(distance);
+//delay(1000);
+ 
  if (state.clickCounter % 10 == 0) {
-    //  Serial.print("Distance = ");
-    // int distance = ultrasonic.Ranging(CM);  
-    // Serial.println(distance);     // the raw analog reading
+      Serial.print("Distance = ");
+     int distance = ultrasonic.Ranging(CM);  
+     Serial.println(distance);     // the raw analog reading
      if (distance < 40) {
        //  Avoid
        state.strategyPhase = 1;
@@ -145,17 +144,20 @@ delay(1000);
    doSquare();
  } else  if (state.strategy == GOTOGOAL) {
    doGoToGoal();
+ } else  if (state.strategy == WANDER) {
+   doWander();
  }
  
+ 
   int touchState = digitalRead(touchPin);
-  if (touchState != HIGH) {
+  if (touchState == HIGH) {
     Serial.println("touched");
   //if 50ml has passed since last HIGH pulse, it means that the
     //  touch sensor has been touched, released and touched again }
     if (millis() - lastTouchEvent > 50) {
           Serial.println("changing mode");
 
-    setStrategy(static_cast<Strategy> ((state.strategy == GOTOGOAL) ? NOSTRATEGY : state.strategy + 1));
+    setStrategy(static_cast<Strategy> ((state.strategy == GOTOGOAL) ? LASTSTRAT : state.strategy + 1));
     }
     // remember when last even happened
     lastTouchEvent = millis();
@@ -218,6 +220,9 @@ void setStrategy(Strategy newStrat) {
     }
 
   }
+  else if (WANDER == state.strategy)
+  {
+  }
 }
  
 ////////////////////////////////////////////////////
@@ -231,9 +236,9 @@ void doSquare() {
   if ( state.strategyPhase % 2 == 0 && state.clickCounter < driveClicks) {
     moveStep();
    if (logging) {
-    // distanceTravelled = ((7.5 * M_PI * clickCounter) / (1.0 * countsperrev));
-    // Serial.print("Distance Travelled = ");
-    //  Serial.println(distanceTravelled); 
+     distanceTravelled = ((7.5 * M_PI * state.clickCounter) / (1.0 * countsperrev));
+     Serial.print("Distance Travelled = ");
+      Serial.println(distanceTravelled); 
      } 
   }
   else   if ( state.strategyPhase < 8 && state.clickCounter < turnClicks ) {
@@ -276,6 +281,7 @@ void doGoToGoal() {
 ////////////////////////////////////////////////////
 //  Strategy phases are 1, 2 = turn left then go straight
 //                      5, 6 = turn right then go straight
+//Serial.println("doGoToGoal()");
 
  if ( state.strategyPhase % 2 == 0 && state.clickCounter < driveClicks) {
     moveStep();
@@ -313,13 +319,21 @@ void doGoToGoal() {
   state.clickCounter++;
 }
 
+ 
+////////////////////////////////////////////////////
+void doWander() {
+////////////////////////////////////////////////////
+
+
+  state.clickCounter++;
+}
 
 
 ////////////////////////////////////////////////////
 void moveStep() {
  ////////////////////////////////////////////////////
  
- return;
+
  
  if ((state.leftSpeed != 0) && (state.clickCounter % state.leftSpeed == 0)) {
    	   digitalWrite(lmotorPin1, bitRead(lookup[leftPhase], 0));
@@ -344,7 +358,8 @@ void moveStep() {
  }
   
  state.clickCounter++;
-   delay(1 + ! state.leftSpeed + ! state.rightSpeed);
+   //delay(1 + ! state.leftSpeed + ! state.rightSpeed);
+   delay(2);
 
 }
 
