@@ -25,7 +25,8 @@ struct Pose {
 
 
 //  
-enum Strategy {NOSTRATEGY, SQUARE, GOTOGOAL, WANDER, LASTSTRAT};
+//enum Strategy {NOSTRATEGY, SQUARE, GOTOGOAL, WANDER, LASTSTRAT};
+enum Strategy {NOSTRATEGY, WANDER, SQUARE, GOTOGOAL, LASTSTRAT};
 
 
 struct State {
@@ -39,6 +40,8 @@ struct State {
 
   int leftSpeed = 1;
   int rightSpeed = 1;
+  
+  int obstacleDist = 100;
 
   State() {
   }
@@ -129,15 +132,17 @@ void setup() {
 void loop() {
 ////////////////////////////////////////////////////
 //delay(1000);
- 
- if (state.clickCounter % 10 == 0) {
-      Serial.print("Distance = ");
+ state.leftDirection = -1;
+ state.rightDirection = 1;
+ if (state.clickCounter % 10 == 0 && state.strategyPhase != 1) {
+  //    Serial.print("Distance = ");
      int distance = ultrasonic.Ranging(CM);  
-     Serial.println(distance);     // the raw analog reading
+  //   Serial.println(distance);     // the raw analog reading
      if (distance < 40) {
        //  Avoid
-       state.strategyPhase = 1;
-       turnClicks = clickCountForRotationDegrees(45.0f);
+       state.strategyPhase = 1;  //  Avoid phase
+       state.obstacleDist = distance;
+       turnClicks = clickCountForRotationDegrees(10.0f);
      }
  }
  if (state.strategy == SQUARE) {
@@ -146,6 +151,9 @@ void loop() {
    doGoToGoal();
  } else  if (state.strategy == WANDER) {
    doWander();
+ } else
+ {
+   Serial.println("No Strategy");
  }
  
  
@@ -162,7 +170,7 @@ void loop() {
     // remember when last even happened
     lastTouchEvent = millis();
   }
-   
+   if (state.clickCounter > 1999999999) state.clickCounter = 0;
 }
  
 ////////////////////////////////////////////////////
@@ -178,6 +186,7 @@ void setStrategy(Strategy newStrat) {
   if (SQUARE == newStrat) {
      //  (7.5 * M_PI) is wheel perimeter
    driveClicks = clickCountForDistanceCm(100.0f);
+   Serial.println("Set Strategy: ----- Square");
    if (logging) {
      Serial.print("driveClicks(sq) = ");
      Serial.println(driveClicks);
@@ -190,7 +199,8 @@ void setStrategy(Strategy newStrat) {
 
   }
   else   if (GOTOGOAL == newStrat) {
-    int goalDistance = 200;
+    Serial.println("Set Strategy: ----- Go To Goal");
+   int goalDistance = 200;
     int goalAngle    = 0;  //  Where positive is go_left, and negative is go_right
 
    //  We're not going to use this yet. This is only useful if we're tracking which we aren't
@@ -222,6 +232,10 @@ void setStrategy(Strategy newStrat) {
   }
   else if (WANDER == state.strategy)
   {
+        Serial.println("Set Strategy: ----- Wander");
+
+     state.strategyPhase = 2;
+    
   }
 }
  
@@ -323,7 +337,40 @@ void doGoToGoal() {
 ////////////////////////////////////////////////////
 void doWander() {
 ////////////////////////////////////////////////////
+ 
+if (  state.strategyPhase == 1) {
+    if(state.clickCounter < turnClicks ) {
 
+      if (state.obstacleDist < 10) {
+        //  Back up
+ 
+        state.rightDirection = -1;
+        state.leftDirection = 1;
+      }
+      else {
+   //  Turn right
+   state.rightSpeed = 0;
+   state.leftSpeed = 1;
+ 
+      }
+    }
+    else {
+      //  Straighten up again
+       state.strategyPhase++;
+    }
+  }
+ 
+  else {
+    //  reset
+   if (state.clickCounter > 1000) state.clickCounter = 0;
+   state.rightSpeed = 1;
+   state.leftSpeed = 1;
+   if (logging) {
+      Serial.print("New phase = ");
+      Serial.println(state.strategyPhase); 
+    }
+  } 
+    moveStep();
 
   state.clickCounter++;
 }
@@ -335,7 +382,7 @@ void moveStep() {
  
 
  
- if ((state.leftSpeed != 0) && (state.clickCounter % state.leftSpeed == 0)) {
+ if (state.leftSpeed != 0)  {
    	   digitalWrite(lmotorPin1, bitRead(lookup[leftPhase], 0));
 	   digitalWrite(lmotorPin2, bitRead(lookup[leftPhase], 1));
 	   digitalWrite(lmotorPin3, bitRead(lookup[leftPhase], 2));
@@ -346,7 +393,7 @@ void moveStep() {
    
  }
   
- if ((state.rightSpeed != 0) && (state.clickCounter % state.rightSpeed == 0)) {
+ if (state.rightSpeed != 0)  {
    	   digitalWrite(rmotorPin1, bitRead(lookup[rightPhase], 0));
 	   digitalWrite(rmotorPin2, bitRead(lookup[rightPhase], 1));
 	   digitalWrite(rmotorPin3, bitRead(lookup[rightPhase], 2));
