@@ -86,7 +86,6 @@ void loop() {
   delay(500);
   }
       //      Serial.println("Sleeping");    
-
   delayWDT(WDTO_8S);
   
 }

@@ -26,7 +26,8 @@ struct Pose {
 
 //  
 //enum Strategy {NOSTRATEGY, SQUARE, GOTOGOAL, WANDER, LASTSTRAT};
-enum Strategy {NOSTRATEGY, WANDER, SQUARE, GOTOGOAL, LASTSTRAT};
+//  Any strategies right of LASTSTRAT are ignored
+enum Strategy {NOSTRATEGY, WANDER, LASTSTRAT, SQUARE, GOTOGOAL};
 
 
 struct State {
@@ -134,11 +135,13 @@ void loop() {
 //delay(1000);
  state.leftDirection = -1;
  state.rightDirection = 1;
- if (state.clickCounter % 10 == 0 && state.strategyPhase != 1) {
+ if (state.clickCounter % 20 == 0 && state.strategyPhase != 1) {
   //    Serial.print("Distance = ");
      int distance = ultrasonic.Ranging(CM);  
-  //   Serial.println(distance);     // the raw analog reading
-     if (distance < 40) {
+    // Serial.println(distance);     // the raw analog reading
+    // Serial.print("Strat = ");
+     ///   Serial.println(state.strategy);
+  if (distance < 40) {
        //  Avoid
        state.strategyPhase = 1;  //  Avoid phase
        state.obstacleDist = distance;
@@ -146,20 +149,20 @@ void loop() {
      }
  }
  if (state.strategy == SQUARE) {
-   doSquare();
+  doWander();//  doSquare();
  } else  if (state.strategy == GOTOGOAL) {
-   doGoToGoal();
+    doWander();//doGoToGoal();
  } else  if (state.strategy == WANDER) {
    doWander();
  } else
  {
-   Serial.println("No Strategy");
+   //Serial.println("No Strategy");
  }
  
  
   int touchState = digitalRead(touchPin);
   if (touchState == HIGH) {
-    Serial.println("touched");
+   // Serial.println("touched");
   //if 50ml has passed since last HIGH pulse, it means that the
     //  touch sensor has been touched, released and touched again }
     if (millis() - lastTouchEvent > 50) {
@@ -336,45 +339,45 @@ void doGoToGoal() {
  
 ////////////////////////////////////////////////////
 void doWander() {
-////////////////////////////////////////////////////
- 
-if (  state.strategyPhase == 1) {
-    if(state.clickCounter < turnClicks ) {
+	////////////////////////////////////////////////////
 
-      if (state.obstacleDist < 10) {
-        //  Back up
- 
-        state.rightDirection = -1;
-        state.leftDirection = 1;
-      }
-      else {
-   //  Turn right
-   state.rightSpeed = 0;
-   state.leftSpeed = 1;
- 
-      }
-    }
-    else {
-      //  Straighten up again
-       state.strategyPhase++;
-    }
-  }
- 
-  else {
-    //  reset
-   if (state.clickCounter > 1000) state.clickCounter = 0;
-   state.rightSpeed = 1;
-   state.leftSpeed = 1;
-   if (logging) {
-      Serial.print("New phase = ");
-      Serial.println(state.strategyPhase); 
-    }
-  } 
-    moveStep();
+	if (state.strategyPhase == 1) {
+		if (state.clickCounter < turnClicks) {
 
-  state.clickCounter++;
+			if (state.obstacleDist < 10) {
+				//  Back up
+
+			//  Turn left
+				state.rightSpeed = 1;
+				state.leftSpeed = 0;
+			}
+			else {
+				//  Turn right
+				state.rightSpeed = 0;
+				state.leftSpeed = 1;
+
+			}
+		}
+		else {
+			//  Straighten up again
+			state.strategyPhase++;
+		}
+	}
+
+	else {
+		//  reset
+		if (state.clickCounter > 1000) state.clickCounter = 0;
+		state.rightSpeed = 1;
+		state.leftSpeed = 1;
+		if (logging) {
+			Serial.print("New phase = ");
+			Serial.println(state.strategyPhase);
+		}
+	}
+	moveStep();
+
+	state.clickCounter++;
 }
-
 
 ////////////////////////////////////////////////////
 void moveStep() {
